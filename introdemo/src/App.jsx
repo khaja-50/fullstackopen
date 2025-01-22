@@ -1,9 +1,9 @@
 
 import { Component, useState } from 'react'
 import viteLogo from '/vite.svg'
-import Header  from "./components/Header.jsx"
-import Content from './components/Content.jsx'
-import Total from './components/Total.jsx'
+import Header  from "./Header.jsx"
+import Content from './content.jsx'
+import Total from './Total.jsx'
 const App = () => {
   // const course = 'Half Stack application development'
   // const part1 = 'Fundamentals of React'
@@ -34,7 +34,7 @@ const App = () => {
     <>
     <Header course={course.name} />
      <Content content = {course.parts}/> 
-     <Total total={course.parts} />
+     <Total Total={course.parts} />
    
     </>
   )

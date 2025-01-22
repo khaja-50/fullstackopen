@@ -3,7 +3,7 @@ const Total = (params)=>{
     return(
       <>
        
-        <p>Number of exercises {params.total[0].exercises + params.total[1].exercises + params.total[2].exercises}</p>
+        <p>Number of exercises {params.Total[0].exercises + params.Total[1].exercises + params.Total[2].exercises}</p>
   
       </>
     )

@@ -3,7 +3,7 @@ const part3 =(params) => {
     return (
     <>
     <p>
-        {params.part3.part3} {params.part3.exercises3}
+    {params.Part3.name} {params.Part3.exercises}
         </p>
 
     </>

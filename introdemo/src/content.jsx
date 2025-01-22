@@ -1,6 +1,6 @@
-import Part1 from "./part/part1"
-import Part2 from "./part/part2"
-import Part3 from "./part/part3"
+import Part1 from "./part1"
+import Part2 from "./part2"
+import Part3 from "./part3"
 const Content = (params) => {
   
   return (
