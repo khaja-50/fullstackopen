@@ -1,111 +1,139 @@
-// src/App.jsx
-import React, { useState } from 'react';
-import axios from 'axios';
+import { useState, useEffect } from "react";
+import Filter from "./components/Filter";
+import Persons from "./components/Persons";
+import PersonForm from "./components/PersonForm";
+import Notification from "./components/Notification";
+import personService from "./services/persons";
 
 const App = () => {
-  const [countries, setCountries] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [message, setMessage] = useState('');
-  const [selectedCountry, setSelectedCountry] = useState(null);
-  const [weather, setWeather] = useState(null);
+  const [allPersons, setAllPersons] = useState([]);
+  const [filterStr, setFilterStr] = useState("");
+  const [newPerson, setNewPerson] = useState({ name: "", number: "" });
+  const [notification, setNotification] = useState(null);
 
-  const handleSearch = async (event) => {
+  useEffect(() => {
+    personService.getAll().then((persons) => {
+      setAllPersons(persons);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 4000);
+
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+  }, [notification]);
+
+  const handleSubmit = (event) => {
     event.preventDefault();
-    if (!searchQuery) return;
-
-    try {
-      const response = await axios.get(
-        `https://studies.cs.helsinki.fi/restcountries/api/name/${searchQuery}`
-      );
-      const data = response.data;
-
-      if (data.length > 10) {
-        setMessage('Too many matches, specify another filter');
-        setCountries([]);
-      } else if (data.length > 1) {
-        setMessage('');
-        setCountries(data);
-      } else {
-        setMessage('');
-        setCountries([data[0]]);
+    const result = allPersons.find(
+      (person) => person.name === newPerson.name.trim()
+    );
+    if (!result) {
+      personService
+        .create(newPerson)
+        .then((person) => {
+          setAllPersons((prevPersons) => prevPersons.concat(person));
+          setNewPerson({ name: "", number: "" });
+          setNotification({
+            type: "success",
+            text: `${person.name} was successfully added`,
+          });
+        })
+        .catch((error) => {
+          setNotification({
+            type: "error",
+            text: error.response?.data?.error || "unknown error",
+          });
+        });
+    } else {
+      if (
+        window.confirm(
+          `${newPerson.name} is already added to phonebook, replace the old number with a new one?`
+        )
+      ) {
+        personService
+          .update(result.id, newPerson)
+          .then((updatedPerson) => {
+            setAllPersons((prevPersons) =>
+              prevPersons.map((person) =>
+                person.id !== updatedPerson.id ? person : updatedPerson
+              )
+            );
+            setNewPerson({ name: "", number: "" });
+            setNotification({
+              type: "success",
+              text: `${newPerson.name} was successfully updated`,
+            });
+          })
+          .catch((error) => {
+            if (error.response?.status === 404) {
+              setAllPersons((prevPersons) =>
+                prevPersons.filter((person) => person.id !== result.id)
+              );
+              setNotification({
+                type: "error",
+                text: `Information of ${newPerson.name} has already removed from server`,
+              });
+            } else {
+              setNotification({
+                type: "error",
+                text: error.response?.data?.error || "unknown error",
+              });
+            }
+          });
       }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      setMessage('No countries found');
-      setCountries([]);
     }
   };
 
-  const handleShowDetails = async (country) => {
-    setSelectedCountry(country);
-    setWeather(null); // Reset weather data
+  const handleFormChange = ({ target: { name, value } }) => {
+    setNewPerson((newPerson) => ({
+      ...newPerson,
+      [name]: value,
+    }));
+  };
 
-    try {
-      const capital = country.capital[0];
-      const apiKey = process.env.REACT_APP_OPENWEATHER_API_KEY;
-      const weatherResponse = await axios.get(
-        `https://api.openweathermap.org/data/2.5/weather?q=${capital}&appid=${apiKey}&units=metric`
-      );
-      setWeather(weatherResponse.data);
-    } catch (error) {
-      console.error('Error fetching weather data:', error);
-      setWeather(null);
+  const handleChangeFilter = (event) => {
+    setFilterStr(event.target.value);
+  };
+
+  const handleRemove = (id, name) => {
+    if (window.confirm(`Delete ${name}?`)) {
+      personService.remove(id).then(() => {
+        setAllPersons((prevPersons) =>
+          prevPersons.filter((person) => person.id !== id)
+        );
+        setNotification({
+          type: "success",
+          text: `${name} was successfully deleted`,
+        });
+      });
     }
   };
 
   return (
-    <div>
-      <h2>Country Information</h2>
-      <form onSubmit={handleSearch}>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search for a country"
-        />
-        <button type="submit">Search</button>
-      </form>
-      {message && <p>{message}</p>}
-      {countries.length > 1 && (
-        <ul>
-          {countries.map((country) => (
-            <li key={country.name}>
-              {country.name}
-              <button onClick={() => handleShowDetails(country)}>Show</button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {countries.length === 1 && (
-        <div>
-          <h3>{countries[0].name}</h3>
-          <p>Capital: {countries[0].capital}</p>
-          <p>Area: {countries[0].area} km²</p>
-          <img
-            src={countries[0].flags[0]}
-            alt={`Flag of ${countries[0].name}`}
-            width="100"
-          />
-          <h4>Languages:</h4>
-          <ul>
-            {countries[0].languages.map((language) => (
-              <li key={language.name}>{language.name}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {selectedCountry && weather && (
-        <div>
-          <h3>Weather in {selectedCountry.capital[0]}</h3>
-          <p>Temperature: {weather.main.temp}°C</p>
-          <p>Weather: {weather.weather[0].description}</p>
-          <img
-            src={`https://openweathermap.org/img/wn/${weather.weather[0].icon}.png`}
-            alt={weather.weather[0].description}
-          />
-        </div>
-      )}
-    </div>
+    <>
+      <h2>Phonebook</h2>
+      <Notification notification={notification} />
+      <Filter filterStr={filterStr} handleChangeFilter={handleChangeFilter} />
+      <h3>add a new</h3>
+      <PersonForm
+        newPerson={newPerson}
+        handleSubmit={handleSubmit}
+        handleFormChange={handleFormChange}
+      />
+      <h3>Numbers</h3>
+      <Persons
+        filterStr={filterStr}
+        allPersons={allPersons}
+        handleRemove={handleRemove}
+      />
+    </>
   );
 };
 
